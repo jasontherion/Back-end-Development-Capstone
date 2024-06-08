@@ -14,7 +14,21 @@ import requests as req
 # Create your views here.
 
 def signup(request):
-    pass
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        try:
+            user = User.objects.filter(username=username).first()
+            if user:
+                return render(request, "signup.html", {"form": SignUpForm, "message": "user already exist"})
+            else:
+                user = User.objects.create(
+                    username=username, password=make_password(password))
+                login(request, user)
+                return HttpResponseRedirect(reverse("index"))
+        except User.DoesNotExist:
+            return render(request, "signup.html", {"form": SignUpForm})
+    return render(request, "signup.html", {"form": SignUpForm})
 
 
 def index(request):
@@ -22,25 +36,55 @@ def index(request):
 
 
 def songs(request):
-    # songs = {"songs":[]}
-    # return render(request, "songs.html", {"songs": [insert list here]})
-    pass
+    songs = {"songs":[{"id":1,"title":"duis faucibus accumsan odio curabitur convallis","lyrics":"Morbi non lectus. Aliquam sit amet diam in magna bibendum imperdiet. Nullam orci pede, venenatis non, sodales sed, tincidunt eu, felis."}]}
+    return render(request, "songs.html", {"songs": songs["songs"]})
 
 
 def photos(request):
-    # photos = []
-    # return render(request, "photos.html", {"photos": photos})
-    pass
+    photos = [{
+        "id": 1,
+        "pic_url": "http://dummyimage.com/136x100.png/5fa2dd/ffffff",
+        "event_country": "United States",
+        "event_state": "District of Columbia",
+        "event_city": "Washington",
+        "event_date": "11/16/2022"
+    }]
+    return render(request, "photos.html", {"photos": photos})
 
-def login_view(request):
-    pass
+
+def login_view(request):  # Define una función llamada login_view que toma un objeto request como argumento
+    if request.method == "POST":  # Verifica si el método de la solicitud es POST (es decir, si el usuario envió un formulario)
+        username = request.POST.get("username")  # Obtiene el nombre de usuario del formulario enviado
+        password = request.POST.get("password")  # Obtiene la contraseña del formulario enviado
+        try:  # Intenta realizar las siguientes acciones y maneja excepciones si ocurren
+            user = User.objects.get(username=username)  # Busca un usuario en la base de datos con el nombre de usuario proporcionado
+            if user.check_password(password):  # Verifica si la contraseña proporcionada es correcta para el usuario encontrado
+                login(request, user)  # Inicia sesión al usuario en la aplicación
+                return HttpResponseRedirect(reverse("index"))  # Redirige al usuario a la página principal ("index") después de iniciar sesión con éxito
+        except User.DoesNotExist:  # Captura la excepción si el usuario no existe en la base de datos
+            return render(request, "login.html", {"form": LoginForm})  # Renderiza la plantilla "login.html" con un formulario vacío si el usuario no existe
+    return render(request, "login.html", {"form": LoginForm})  # Renderiza la plantilla "login.html" con un formulario vacío si el método no es POST (por ejemplo, al visitar la página por primera vez)
 
 def logout_view(request):
-    pass
+    logout(request)
+    return HttpResponseRedirect(reverse("login"))
 
 def concerts(request):
-    pass
-
+    lst_of_concert = []
+    concert_objects = Concert.objects.all() 
+    for item in concert_objects:
+        try:
+            status = item.attendee.filter(
+            user=request.user).first().attending
+        except:
+            status = "-"
+        lst_of_concert.append({
+            "concert": item,
+            "status": status
+        })
+        return render(request,"concerts.html", {"concerts": lst_of_concert})
+    else:
+        return render(request,"concerts.html", {"concerts": lst_of_concert})
 
 def concert_detail(request, id):
     if request.user.is_authenticated:
@@ -53,7 +97,6 @@ def concert_detail(request, id):
     else:
         return HttpResponseRedirect(reverse("login"))
     pass
-
 
 def concert_attendee(request):
     if request.user.is_authenticated:
